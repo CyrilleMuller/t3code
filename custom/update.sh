@@ -10,8 +10,15 @@ cd "$(dirname "$0")/.."
 
 INSTALL_PATH="${T3CODE_CUSTOM_INSTALL_PATH:-$HOME/Applications/T3-Code-custom.AppImage}"
 
+# The crates use Rust edition 2024. Ubuntu's packaged cargo is too old, so use rustup's.
+export PATH="$HOME/.cargo/bin:$PATH"
+
 missing=()
-command -v cargo >/dev/null || missing+=(cargo rustc)
+if ! command -v rustup >/dev/null; then
+  echo "rustup is missing. Install it with:" >&2
+  echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal" >&2
+  exit 1
+fi
 command -v pkg-config >/dev/null || missing+=(pkg-config)
 pkg-config --exists libsecret-1 2>/dev/null || missing+=(libsecret-1-dev)
 command -v magick >/dev/null || command -v convert >/dev/null || missing+=(imagemagick)
@@ -32,6 +39,9 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+# pnpm rewrites deprecation notes in the lockfile during the build. That is never part of the patch.
+trap 'git checkout -q -- pnpm-lock.yaml' EXIT
+
 git fetch upstream --tags --prune
 target="${1:-$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)}"
 echo "==> Rebasing custom onto $target"
@@ -50,7 +60,7 @@ rm -rf release
 if [[ "$target" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   export T3CODE_DESKTOP_VERSION="${target#v}"
 fi
-pnpm dist:desktop:linux
+node scripts/build-desktop-artifact.ts --platform linux --target AppImage --arch x64
 
 appimage="$(find release -maxdepth 1 -name '*.AppImage' | head -n1)"
 if [[ -z "$appimage" ]]; then
