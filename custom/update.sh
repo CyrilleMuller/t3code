@@ -60,7 +60,7 @@ rm -rf release
 if [[ "$target" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   export T3CODE_DESKTOP_VERSION="${target#v}"
 fi
-node scripts/build-desktop-artifact.ts --platform linux --target AppImage --arch x64
+PATH="$PWD/node_modules/.bin:$PATH" node scripts/build-desktop-artifact.ts --platform linux --target AppImage --arch x64
 
 appimage="$(find release -maxdepth 1 -name '*.AppImage' | head -n1)"
 if [[ -z "$appimage" ]]; then
