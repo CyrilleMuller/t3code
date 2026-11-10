@@ -22,6 +22,7 @@ import {
   FileDiff,
   Files,
   Globe2,
+  LayoutTemplate,
   Plus,
   TerminalSquare,
   Volume2,
@@ -122,6 +123,7 @@ interface RightPanelTabsProps {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddAgents: () => void;
+  onAddArtifacts: () => void;
   onAddDevice: () => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
@@ -130,6 +132,7 @@ interface RightPanelTabsProps {
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
   agentsAvailable: boolean;
+  artifactsAvailable: boolean;
   deviceAvailable: boolean;
   pullRequestStatusSeeds?: Readonly<Record<string, PullRequestTabStatusSeed>>;
   /** Running + waiting subagents; badges the Agents card in the empty state. */
@@ -161,6 +164,7 @@ const SURFACE_DISABLED_REASONS = {
   pullRequest: "This thread's branch has no pull request yet.",
   pullRequests: "No linked pull requests are available for this thread.",
   agents: "Agents are only available from a thread.",
+  artifacts: "Artifacts are only available from a thread.",
   device: "Devices are only available from a thread.",
 } as const;
 
@@ -185,6 +189,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   pullRequest: "No pull request on this branch yet.",
   pullRequests: "No linked pull requests available.",
   agents: "Available from a thread.",
+  artifacts: "Available from a thread.",
   device: "Available from a thread.",
 } as const;
 
@@ -325,6 +330,7 @@ function RightPanelEmptyState(props: {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddAgents: () => void;
+  onAddArtifacts: () => void;
   onAddDevice: () => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
@@ -333,6 +339,7 @@ function RightPanelEmptyState(props: {
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
   agentsAvailable: boolean;
+  artifactsAvailable: boolean;
   deviceAvailable: boolean;
   liveAgentCount: number;
 }) {
@@ -402,6 +409,15 @@ function RightPanelEmptyState(props: {
       disabledReason: SURFACE_UNAVAILABLE_HINTS.agents,
       onClick: props.onAddAgents,
       badgeCount: props.liveAgentCount,
+    },
+    {
+      label: "Artifacts",
+      icon: LayoutTemplate,
+      shortcut: "R",
+      available: props.artifactsAvailable,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.artifacts,
+      onClick: props.onAddArtifacts,
+      badgeCount: 0,
     },
     {
       label: "Device",
@@ -630,6 +646,8 @@ function surfaceTitle(
       return "Pull requests";
     case "agents":
       return "Agents";
+    case "artifacts":
+      return "Artifacts";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "preview": {
@@ -715,6 +733,8 @@ function SurfaceIcon({
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
     case "agents":
       return <Bot className="size-3 shrink-0" />;
+    case "artifacts":
+      return <LayoutTemplate className="size-3 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-3 shrink-0" />
@@ -924,6 +944,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.agentsAvailable,
       disabledReason: SURFACE_DISABLED_REASONS.agents,
       onClick: props.onAddAgents,
+    },
+    {
+      label: "Artifacts",
+      icon: LayoutTemplate,
+      shortcut: "R",
+      available: props.artifactsAvailable,
+      disabledReason: SURFACE_DISABLED_REASONS.artifacts,
+      onClick: props.onAddArtifacts,
     },
     {
       label: "Device",
@@ -1415,6 +1443,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}
             onAddAgents={props.onAddAgents}
+            onAddArtifacts={props.onAddArtifacts}
             onAddDevice={props.onAddDevice}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
@@ -1423,6 +1452,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             pullRequestAvailable={props.pullRequestAvailable}
             pullRequestsAvailable={props.pullRequestsAvailable}
             agentsAvailable={props.agentsAvailable}
+            artifactsAvailable={props.artifactsAvailable}
             deviceAvailable={props.deviceAvailable}
             liveAgentCount={props.liveAgentCount}
           />

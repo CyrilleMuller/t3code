@@ -63,6 +63,10 @@
       "types": "./src/codexFileCitations.ts",
       "default": "./src/codexFileCitations.ts"
     },
+    "./thread-artifacts": {
+      "types": "./src/threadArtifacts.ts",
+      "default": "./src/threadArtifacts.ts"
+    },
     "./codex-artifact-templates": {
       "types": "./src/codexArtifactTemplates.ts",
       "default": "./src/codexArtifactTemplates.ts"
