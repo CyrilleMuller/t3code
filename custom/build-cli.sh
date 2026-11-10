@@ -60,6 +60,9 @@ nvm use 24 >/dev/null
 
 echo "==> Packing release/cli/t3-$version-linux-x64.tar.gz"
 rm -rf release/cli
+# The archive installs the native externals without a lockfile, so a newer node-pty beta than the
+# patched one can resolve. The node-pty patch only touches Windows code.
+export npm_config_allow_unused_patches=true pnpm_config_allow_unused_patches=true
 node scripts/build-cli-archive.ts --platform linux --arch x64 --version "$version" \
   --resource-monitor-dir "$monitor_dir" --output-dir release/cli
 node scripts/smoke-cli-archive.ts --archive "release/cli/t3-$version-linux-x64.tar.gz" \
