@@ -30,8 +30,8 @@ fi
 # notes in the lockfile. Neither is ever part of the patch.
 monitor_dir="$(mktemp -d)"
 restore() {
-  git checkout -q -- pnpm-lock.yaml apps/server/package.json apps/desktop/package.json \
-    apps/web/package.json packages/contracts/package.json
+  git checkout -q -- pnpm-lock.yaml pnpm-workspace.yaml apps/server/package.json \
+    apps/desktop/package.json apps/web/package.json packages/contracts/package.json
   rm -rf "$monitor_dir"
 }
 trap restore EXIT
@@ -60,9 +60,10 @@ nvm use 24 >/dev/null
 
 echo "==> Packing release/cli/t3-$version-linux-x64.tar.gz"
 rm -rf release/cli
-# The archive installs the native externals without a lockfile, so a newer node-pty beta than the
-# patched one can resolve. The node-pty patch only touches Windows code.
-export npm_config_allow_unused_patches=true pnpm_config_allow_unused_patches=true
+# The archive installs the native externals without a lockfile and with the root overrides.
+# Without a pin, "^1.2.0-beta.15" resolves a newer node-pty beta, the node-pty patch goes unused
+# and pnpm fails. Pin the version the lockfile has. The trap restores the file.
+sed -i 's/^overrides:$/overrides:\n  node-pty: 1.2.0-beta.15/' pnpm-workspace.yaml
 node scripts/build-cli-archive.ts --platform linux --arch x64 --version "$version" \
   --resource-monitor-dir "$monitor_dir" --output-dir release/cli
 node scripts/smoke-cli-archive.ts --archive "release/cli/t3-$version-linux-x64.tar.gz" \
