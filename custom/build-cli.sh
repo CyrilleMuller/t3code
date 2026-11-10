@@ -51,8 +51,12 @@ mkdir -p "$monitor_dir/linux-x64"
 cp native/resource-monitor/target/release/t3-resource-monitor "$monitor_dir/linux-x64/"
 
 echo "==> Building the single executable"
+# The single executable needs a Node with --build-sea (25.7+), as in CI. Only this step uses it.
 # Keep in step with SEA_NODE_VERSION in apps/server/vite.config.ts.
-VP_NODE_VERSION=26.8.2 node apps/server/scripts/cli.ts build-exe
+nvm install 26.8.2 >/dev/null
+nvm use 26.8.2 >/dev/null
+node apps/server/scripts/cli.ts build-exe
+nvm use 24 >/dev/null
 
 echo "==> Packing release/cli/t3-$version-linux-x64.tar.gz"
 rm -rf release/cli
