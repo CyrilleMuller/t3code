@@ -43,6 +43,7 @@ import {
   FileDiff,
   Files,
   Globe2,
+  LayoutTemplate,
   MessagesSquare,
   Plus,
   TerminalSquare,
@@ -143,6 +144,8 @@ export interface RightPanelTabsProps {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  /** Custom: the pages a thread produced. Absent outside a thread. */
+  onAddArtifacts?: (() => void) | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -324,6 +327,8 @@ function RightPanelEmptyState(props: {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  /** Custom: the pages a thread produced. Absent outside a thread. */
+  onAddArtifacts?: (() => void) | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -394,6 +399,19 @@ function RightPanelEmptyState(props: {
       disabledReason: SURFACE_UNAVAILABLE_HINTS.device,
       onClick: props.onAddDevice,
     },
+    ...(props.onAddArtifacts
+      ? [
+          {
+            label: "Artifacts",
+            description: "The pages this thread made.",
+            icon: LayoutTemplate,
+            shortcut: "R",
+            available: true,
+            disabledReason: "",
+            onClick: props.onAddArtifacts,
+          },
+        ]
+      : []),
     ...(props.onAddSideChat
       ? [
           {
@@ -590,6 +608,8 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
+    case "artifacts":
+      return "Artifacts";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "side-chat":
@@ -682,6 +702,8 @@ function SurfaceIcon({
       );
     case "pull-requests":
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
+    case "artifacts":
+      return <LayoutTemplate className="size-3 shrink-0" />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
     case "device":
@@ -1147,6 +1169,18 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       disabledReason: SURFACE_DISABLED_REASONS.device,
       onClick: props.onAddDevice,
     },
+    ...(props.onAddArtifacts
+      ? [
+          {
+            label: "Artifacts",
+            icon: LayoutTemplate,
+            shortcut: "R",
+            available: true,
+            disabledReason: "",
+            onClick: props.onAddArtifacts,
+          },
+        ]
+      : []),
     ...(props.onAddSideChat
       ? [
           {
@@ -1534,6 +1568,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddPullRequests={props.onAddPullRequests}
             onAddDevice={props.onAddDevice}
             onAddSideChat={props.onAddSideChat}
+            onAddArtifacts={props.onAddArtifacts}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}
