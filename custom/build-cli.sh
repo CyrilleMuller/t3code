@@ -1,22 +1,38 @@
 #!/usr/bin/env bash
-# Build the linux-x64 server archive from the custom branch: the same layout the npm
-# package @t3code/t3-linux-x64 installs (t3, client/, resource-monitor/, node_modules/).
-# Pandora runs that layout. See custom/pandora.md for the deploy.
+# Build the linux-x64 server archive from the custom branch: the layout of the upstream
+# release asset t3-<version>-linux-x64.tar.gz (t3, client/, lib/, resource-monitor/,
+# node_modules/). Pandora runs that layout. See custom/pandora.md for the deploy.
 #
 #   custom/build-cli.sh                 # version <last release>-custom.<short sha>
-#   custom/build-cli.sh 0.0.45-custom.1 # a version of your choice
+#   custom/build-cli.sh 0.1.8-custom.1  # a version of your choice
 #
 # Writes release/cli/t3-<version>-linux-x64.tar.gz.
+#
+# Needs: Node exactly as in package.json "engines" (the single executable embeds it),
+# pnpm (corepack), rustup's cargo, patchelf. With nvm, the right Node is installed for you.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # The crates use Rust edition 2024. Ubuntu's packaged cargo is too old, so use rustup's.
 export PATH="$HOME/.cargo/bin:$PWD/node_modules/.bin:$PATH"
-# shellcheck disable=SC1091
-source "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
-nvm use 24 >/dev/null
 # npm's registry is unreachable over IPv6 on some networks; pnpm then stalls.
 export NODE_OPTIONS="--dns-result-order=ipv4first"
+
+node_version="$(sed -n 's/.*"node": *"\([0-9.]*\)".*/\1/p' package.json | head -1)"
+if [[ "$(node --version 2>/dev/null)" != "v$node_version" ]]; then
+  if [[ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+    nvm install "$node_version" >/dev/null
+    nvm use "$node_version" >/dev/null
+  else
+    echo "Need Node $node_version (package.json engines), found $(node --version 2>/dev/null || echo none)." >&2
+    exit 1
+  fi
+fi
+for tool in cargo patchelf; do
+  command -v "$tool" >/dev/null || { echo "$tool is missing." >&2; exit 1; }
+done
 
 base="$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-*')"
 version="${1:-${base#v}-custom.$(git rev-parse --short HEAD)}"
@@ -51,19 +67,10 @@ mkdir -p "$monitor_dir/linux-x64"
 cp native/resource-monitor/target/release/t3-resource-monitor "$monitor_dir/linux-x64/"
 
 echo "==> Building the single executable"
-# The single executable needs a Node with --build-sea (25.7+), as in CI. Only this step uses it.
-# Keep in step with SEA_NODE_VERSION in apps/server/vite.config.ts.
-nvm install 26.8.2 >/dev/null
-nvm use 26.8.2 >/dev/null
 node apps/server/scripts/cli.ts build-exe
-nvm use 24 >/dev/null
 
 echo "==> Packing release/cli/t3-$version-linux-x64.tar.gz"
 rm -rf release/cli
-# The archive installs the native externals without a lockfile and with the root overrides.
-# Without a pin, "^1.2.0-beta.15" resolves a newer node-pty beta, the node-pty patch goes unused
-# and pnpm fails. Pin the version the lockfile has. The trap restores the file.
-sed -i 's/^overrides:$/overrides:\n  node-pty: 1.2.0-beta.15/' pnpm-workspace.yaml
 node scripts/build-cli-archive.ts --platform linux --arch x64 --version "$version" \
   --resource-monitor-dir "$monitor_dir" --output-dir release/cli
 node scripts/smoke-cli-archive.ts --archive "release/cli/t3-$version-linux-x64.tar.gz" \
