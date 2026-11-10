@@ -1,9 +1,11 @@
 /**
  * Artifacts right-panel surface: the pages a thread produced, newest first.
  * The list is derived from the thread's messages and file writes on every
- * render of this panel only; nothing is stored. A row opens its link where the
- * "Open links in" setting says (the in-app browser or a browser tab), or the
- * written file in the file preview when the thread never linked it.
+ * render of this panel only; nothing is stored.
+ *
+ * A row opens its page inside the panel, in a sandboxed frame, with a way back
+ * to the list. A claude.ai artifact cannot be framed, so it opens where the
+ * "Open links in" setting says (the in-app browser or a browser tab).
  */
 import { workspaceRelativeFilePath } from "@t3tools/client-runtime/markdown-links";
 import {
@@ -17,16 +19,16 @@ import type {
   OrchestrationThreadActivity,
   ScopedThreadRef,
 } from "@t3tools/contracts";
-import { ExternalLink, LayoutTemplate } from "lucide-react";
-import { type MouseEvent as ReactMouseEvent, useMemo } from "react";
+import { ChevronLeft, ExternalLink, LayoutTemplate } from "lucide-react";
+import { type MouseEvent as ReactMouseEvent, useMemo, useState } from "react";
 
-import { canOpenLinksInApp } from "~/browser/browserLinkTarget";
+import { useAssetUrlState } from "~/assets/assetUrls";
 import { useOpenLink } from "~/browser/useOpenLink";
 import { useClientSettings } from "~/hooks/useSettings";
-import { useRightPanelStore } from "~/rightPanelStore";
 import { formatChatTimestampTooltip, formatDayAwareTimestamp } from "~/timestampFormat";
 import { Button } from "~/components/ui/button";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { Spinner } from "~/components/ui/spinner";
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 
@@ -42,28 +44,54 @@ function titleSourcePath(artifact: ThreadArtifact, cwd: string | undefined): str
   return `pages/${artifact.fileName}`;
 }
 
+function useArtifactTitle(
+  artifact: ThreadArtifact,
+  environmentId: EnvironmentId,
+  cwd: string | undefined,
+): string {
+  const sourcePath = titleSourcePath(artifact, cwd);
+  const file = useProjectFileQuery(environmentId, cwd ?? "", sourcePath, sourcePath !== null);
+  const htmlTitle = file.data ? htmlDocumentTitle(file.data.contents) : null;
+  return (
+    htmlTitle ??
+    artifact.label ??
+    (artifact.kind === "external" ? "Claude artifact" : artifact.fileName)
+  );
+}
+
+/** Only an http(s) page or a written file can be shown in the panel. */
+const canEmbed = (artifact: ThreadArtifact) => artifact.kind === "page";
+
+function OpenInBrowserButton(props: { onClick: () => void }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label="Open in browser"
+            size="icon-xs"
+            variant="ghost-muted"
+            onClick={props.onClick}
+          />
+        }
+      >
+        <ExternalLink className="size-3.5" />
+      </TooltipTrigger>
+      <TooltipPopup side="top">Open in browser</TooltipPopup>
+    </Tooltip>
+  );
+}
+
 function ArtifactRow(props: {
   artifact: ThreadArtifact;
   environmentId: EnvironmentId;
   cwd: string | undefined;
-  inAppBrowser: boolean;
   onOpen: (artifact: ThreadArtifact, event: ReactMouseEvent) => void;
   onOpenInBrowser: (url: string) => void;
 }) {
   const { artifact } = props;
   const timestampFormat = useClientSettings((settings) => settings.timestampFormat);
-  const sourcePath = titleSourcePath(artifact, props.cwd);
-  const file = useProjectFileQuery(
-    props.environmentId,
-    props.cwd ?? "",
-    sourcePath,
-    sourcePath !== null,
-  );
-  const htmlTitle = file.data ? htmlDocumentTitle(file.data.contents) : null;
-  const title =
-    htmlTitle ??
-    artifact.label ??
-    (artifact.kind === "external" ? "Claude artifact" : artifact.fileName);
+  const title = useArtifactTitle(artifact, props.environmentId, props.cwd);
   const location = artifact.url ?? artifact.filePath ?? "";
   return (
     <li className="group/artifact relative">
@@ -98,26 +126,118 @@ function ArtifactRow(props: {
           </span>
         </TooltipPopup>
       </Tooltip>
-      {artifact.url && props.inAppBrowser ? (
+      {artifact.url && canEmbed(artifact) ? (
         <span className="absolute top-1.5 right-1.5 opacity-0 group-hover/artifact:opacity-100 group-focus-within/artifact:opacity-100">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  aria-label="Open in system browser"
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  onClick={() => props.onOpenInBrowser(artifact.url!)}
-                />
-              }
-            >
-              <ExternalLink className="size-3.5" />
-            </TooltipTrigger>
-            <TooltipPopup side="top">Open in system browser</TooltipPopup>
-          </Tooltip>
+          <OpenInBrowserButton onClick={() => props.onOpenInBrowser(artifact.url!)} />
         </span>
       ) : null}
     </li>
+  );
+}
+
+/**
+ * The page runs sandboxed. A page on another origin than the app keeps its own
+ * origin, so its storage works; a page served from the app's origin (a written
+ * file) gets an opaque one, so it cannot reach the app's session or storage.
+ */
+function ArtifactFrame(props: { src: string; title: string }) {
+  let sameOrigin = true;
+  try {
+    sameOrigin = new URL(props.src, window.location.href).origin === window.location.origin;
+  } catch {
+    // An unparsable URL stays fully sandboxed.
+  }
+  const sandbox = `allow-scripts allow-forms allow-popups allow-modals allow-downloads${
+    sameOrigin ? "" : " allow-same-origin"
+  }`;
+  return (
+    <iframe
+      src={props.src}
+      title={props.title}
+      sandbox={sandbox}
+      className="min-h-0 flex-1 border-0 bg-white"
+    />
+  );
+}
+
+function ArtifactFileFrame(props: {
+  environmentId: EnvironmentId;
+  threadRef: ScopedThreadRef;
+  absolutePath: string;
+  title: string;
+}) {
+  const resource = useMemo(
+    () => ({
+      _tag: "workspace-file" as const,
+      threadId: props.threadRef.threadId,
+      path: props.absolutePath,
+    }),
+    [props.absolutePath, props.threadRef.threadId],
+  );
+  const assetUrl = useAssetUrlState(props.environmentId, resource);
+  if (assetUrl._tag === "Failure") {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-xs text-destructive">
+        Unable to load this page.
+      </div>
+    );
+  }
+  if (assetUrl._tag !== "Success") {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+  return <ArtifactFrame src={assetUrl.url} title={props.title} />;
+}
+
+function ArtifactViewer(props: {
+  artifact: ThreadArtifact;
+  threadRef: ScopedThreadRef;
+  cwd: string | undefined;
+  onBack: () => void;
+  onOpenInBrowser: (url: string) => void;
+}) {
+  const { artifact, threadRef, cwd } = props;
+  const title = useArtifactTitle(artifact, threadRef.environmentId, cwd);
+  const absolutePath =
+    artifact.filePath && cwd && !artifact.filePath.startsWith("/")
+      ? `${cwd.replace(/\/+$/, "")}/${artifact.filePath}`
+      : artifact.filePath;
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="flex h-9 shrink-0 items-center gap-1 border-b border-border/60 px-1.5">
+        <Button
+          aria-label="All artifacts"
+          size="icon-xs"
+          variant="ghost-muted"
+          onClick={props.onBack}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="min-w-0 flex-1 truncate text-sm">{title}</span>
+        {artifact.url ? (
+          <OpenInBrowserButton onClick={() => props.onOpenInBrowser(artifact.url!)} />
+        ) : null}
+      </header>
+      {/* Keyed on the update time: a page the agent rewrote reloads. */}
+      {artifact.url ? (
+        <ArtifactFrame
+          key={`${artifact.id}:${artifact.updatedAt}`}
+          src={artifact.url}
+          title={title}
+        />
+      ) : absolutePath ? (
+        <ArtifactFileFrame
+          key={`${artifact.id}:${artifact.updatedAt}`}
+          environmentId={threadRef.environmentId}
+          threadRef={threadRef}
+          absolutePath={absolutePath}
+          title={title}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -132,8 +252,9 @@ export function ArtifactsPanel(props: {
     () => deriveThreadArtifacts({ messages, activities }),
     [activities, messages],
   );
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openArtifact = artifacts.find((artifact) => artifact.id === openId) ?? null;
   const openLink = useOpenLink(threadRef);
-  const inAppBrowser = canOpenLinksInApp(true);
 
   const reportOpenFailure = (error: unknown) => {
     console.error(error);
@@ -146,22 +267,28 @@ export function ArtifactsPanel(props: {
     );
   };
   const open = (artifact: ThreadArtifact, event: ReactMouseEvent) => {
-    if (artifact.url) {
-      void openLink(artifact.url, { event }).catch(reportOpenFailure);
+    if (canEmbed(artifact)) {
+      setOpenId(artifact.id);
       return;
     }
-    if (artifact.filePath) {
-      useRightPanelStore
-        .getState()
-        .openFile(
-          threadRef,
-          workspaceRelativeFilePath(artifact.filePath, cwd) ?? artifact.filePath,
-        );
-    }
+    if (artifact.url) void openLink(artifact.url, { event }).catch(reportOpenFailure);
   };
+  // The modifier sends the link past the in-app browser to the system browser.
   const openInBrowser = (url: string) => {
     void openLink(url, { event: { metaKey: true, ctrlKey: true } }).catch(reportOpenFailure);
   };
+
+  if (openArtifact) {
+    return (
+      <ArtifactViewer
+        artifact={openArtifact}
+        threadRef={threadRef}
+        cwd={cwd}
+        onBack={() => setOpenId(null)}
+        onOpenInBrowser={openInBrowser}
+      />
+    );
+  }
 
   if (artifacts.length === 0) {
     return (
@@ -184,7 +311,6 @@ export function ArtifactsPanel(props: {
             artifact={artifact}
             environmentId={threadRef.environmentId}
             cwd={cwd}
-            inAppBrowser={inAppBrowser}
             onOpen={open}
             onOpenInBrowser={openInBrowser}
           />
