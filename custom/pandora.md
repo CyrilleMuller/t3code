@@ -127,3 +127,19 @@ than the custom build's base: restore the `userdata` backup from step 4.1 first.
 - The desktop app: only a build from this branch (`custom/update.sh`). The desktop app shows
   its own bundled client, also when it connects to pandora.
 - The mobile app: no. The panel is web only.
+
+## Claude session links
+
+`https://<instance>/claude-session/<session id>` opens a Claude Code session as a thread of
+that instance. The browser must already be paired with it.
+
+- A thread bound to the session (made in T3, or imported before) opens as it is.
+- Otherwise the server reads `<claude config dir>/projects/*/<id>.jsonl` (the config dir of each
+  enabled Claude instance: its home path setting, then `CLAUDE_CONFIG_DIR`, then
+  `~/.claude` of the user the service runs as), adds a project for the transcript's `cwd` if
+  there is none, and imports the session: the user and assistant text (at most 200 messages:
+  the first request and the latest ones, with a notice for the rest). Tool calls, thinking and
+  subagent records are not shown. The next message resumes the session (`claude --resume`).
+- The imported thread is `import:<instance>:<id>`, the id T3's own "import agent sessions"
+  gives it, so a second open or a later bulk import does not make a second thread.
+- An unknown id or an empty transcript shows an error and creates nothing.

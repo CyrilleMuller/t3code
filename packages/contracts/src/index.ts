@@ -73,3 +73,5 @@ export * from "./secretRequest.ts";
 export * from "./secretReference.ts";
 export * from "./settingsSecretValue.ts";
 export * from "./clientRpcPermissions.ts";
+// custom: /claude-session/<id> links (pandora fork).
+export * from "./customClaudeSession.ts";

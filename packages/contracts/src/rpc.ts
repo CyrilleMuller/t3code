@@ -83,6 +83,8 @@ import {
   EnvironmentAuthorizationError,
 } from "./auth.ts";
 import { ClientActivityReportInput } from "./background.ts";
+// custom: /claude-session/<id> links (pandora fork).
+import { WsClaudeSessionOpenRpc } from "./customClaudeSession.ts";
 import {
   FilesystemGetMetadataInput,
   FilesystemGetMetadataResult,
@@ -2107,6 +2109,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerAcceptAcpRegistryUrlAuthRpc,
   WsServerListAcpRegistrySessionsRpc,
   WsServerImportAcpRegistrySessionRpc,
+  WsClaudeSessionOpenRpc,
   WsServerDeleteAcpRegistrySessionRpc,
   WsServerListAcpRegistryProvidersRpc,
   WsServerSetAcpRegistryProviderRpc,

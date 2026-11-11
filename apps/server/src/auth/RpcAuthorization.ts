@@ -1,4 +1,5 @@
 import {
+  CLAUDE_SESSION_OPEN_WS_METHOD,
   CLIENT_GUARDED_RPC_SCOPES,
   type DeviceListInput,
   clientRpcRequiredScopes,
@@ -98,6 +99,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.serverAcceptAcpRegistryUrlAuth]: AuthProvidersManageScope,
   [WS_METHODS.serverListAcpRegistrySessions]: AuthOrchestrationReadScope,
   [WS_METHODS.serverImportAcpRegistrySession]: AuthOrchestrationOperateScope,
+  // custom: /claude-session/<id> links (pandora fork).
+  [CLAUDE_SESSION_OPEN_WS_METHOD]: AuthOrchestrationOperateScope,
   [WS_METHODS.serverDeleteAcpRegistrySession]: AuthOrchestrationOperateScope,
   [WS_METHODS.serverListAcpRegistryProviders]: AuthOrchestrationReadScope,
   [WS_METHODS.serverSetAcpRegistryProvider]: AuthProvidersManageScope,

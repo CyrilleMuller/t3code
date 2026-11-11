@@ -1,4 +1,9 @@
-import { ORCHESTRATION_V2_WS_METHODS, WS_METHODS, type WsRpcGroup } from "@t3tools/contracts";
+import {
+  CLAUDE_SESSION_OPEN_WS_METHOD,
+  ORCHESTRATION_V2_WS_METHODS,
+  WS_METHODS,
+  type WsRpcGroup,
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as References from "effect/References";
@@ -75,6 +80,8 @@ const RPC_AGGREGATES = {
   [WS_METHODS.serverAcceptAcpRegistryUrlAuth]: "server",
   [WS_METHODS.serverListAcpRegistrySessions]: "server",
   [WS_METHODS.serverImportAcpRegistrySession]: "server",
+  // custom: /claude-session/<id> links (pandora fork).
+  [CLAUDE_SESSION_OPEN_WS_METHOD]: "server",
   [WS_METHODS.serverDeleteAcpRegistrySession]: "server",
   [WS_METHODS.serverListAcpRegistryProviders]: "server",
   [WS_METHODS.serverSetAcpRegistryProvider]: "server",

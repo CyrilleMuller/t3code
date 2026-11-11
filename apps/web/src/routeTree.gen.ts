@@ -50,6 +50,7 @@ import { Route as ChatSettingsAppearanceRouteImport } from './routes/_chat.setti
 import { Route as ChatSettingsAccessRouteImport } from './routes/_chat.settings.access'
 import { Route as ChatSettingsAboutRouteImport } from './routes/_chat.settings.about'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
+import { Route as ChatClaudeSessionSessionIdRouteImport } from './routes/_chat.claude-session.$sessionId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
 
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -261,6 +262,12 @@ const ChatDraftDraftIdRoute = ChatDraftDraftIdRouteImport.update({
   path: '/draft/$draftId',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatClaudeSessionSessionIdRoute =
+  ChatClaudeSessionSessionIdRouteImport.update({
+    id: '/claude-session/$sessionId',
+    path: '/claude-session/$sessionId',
+    getParentRoute: () => ChatRoute,
+  } as any)
 const ChatEnvironmentIdThreadIdRoute =
   ChatEnvironmentIdThreadIdRouteImport.update({
     id: '/$environmentId/$threadId',
@@ -281,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/usage': typeof ChatUsageRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
+  '/claude-session/$sessionId': typeof ChatClaudeSessionSessionIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
   '/settings/about': typeof ChatSettingsAboutRoute
   '/settings/access': typeof ChatSettingsAccessRoute
@@ -324,6 +332,7 @@ export interface FileRoutesByTo {
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/': typeof ChatIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
+  '/claude-session/$sessionId': typeof ChatClaudeSessionSessionIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
   '/settings/about': typeof ChatSettingsAboutRoute
   '/settings/access': typeof ChatSettingsAccessRoute
@@ -369,6 +378,7 @@ export interface FileRoutesById {
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/_chat/': typeof ChatIndexRoute
   '/_chat/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
+  '/_chat/claude-session/$sessionId': typeof ChatClaudeSessionSessionIdRoute
   '/_chat/draft/$draftId': typeof ChatDraftDraftIdRoute
   '/_chat/settings/about': typeof ChatSettingsAboutRoute
   '/_chat/settings/access': typeof ChatSettingsAccessRoute
@@ -414,6 +424,7 @@ export interface FileRouteTypes {
     | '/usage'
     | '/projects/$projectKey'
     | '/$environmentId/$threadId'
+    | '/claude-session/$sessionId'
     | '/draft/$draftId'
     | '/settings/about'
     | '/settings/access'
@@ -457,6 +468,7 @@ export interface FileRouteTypes {
     | '/projects/$projectKey'
     | '/'
     | '/$environmentId/$threadId'
+    | '/claude-session/$sessionId'
     | '/draft/$draftId'
     | '/settings/about'
     | '/settings/access'
@@ -501,6 +513,7 @@ export interface FileRouteTypes {
     | '/projects/$projectKey'
     | '/_chat/'
     | '/_chat/$environmentId/$threadId'
+    | '/_chat/claude-session/$sessionId'
     | '/_chat/draft/$draftId'
     | '/_chat/settings/about'
     | '/_chat/settings/access'
@@ -832,6 +845,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatDraftDraftIdRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/claude-session/$sessionId': {
+      id: '/_chat/claude-session/$sessionId'
+      path: '/claude-session/$sessionId'
+      fullPath: '/claude-session/$sessionId'
+      preLoaderRoute: typeof ChatClaudeSessionSessionIdRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/$environmentId/$threadId': {
       id: '/_chat/$environmentId/$threadId'
       path: '/$environmentId/$threadId'
@@ -913,6 +933,7 @@ interface ChatRouteChildren {
   ChatUsageRoute: typeof ChatUsageRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ChatEnvironmentIdThreadIdRoute: typeof ChatEnvironmentIdThreadIdRoute
+  ChatClaudeSessionSessionIdRoute: typeof ChatClaudeSessionSessionIdRoute
   ChatDraftDraftIdRoute: typeof ChatDraftDraftIdRoute
 }
 
@@ -923,6 +944,7 @@ const ChatRouteChildren: ChatRouteChildren = {
   ChatUsageRoute: ChatUsageRoute,
   ChatIndexRoute: ChatIndexRoute,
   ChatEnvironmentIdThreadIdRoute: ChatEnvironmentIdThreadIdRoute,
+  ChatClaudeSessionSessionIdRoute: ChatClaudeSessionSessionIdRoute,
   ChatDraftDraftIdRoute: ChatDraftDraftIdRoute,
 }
 
