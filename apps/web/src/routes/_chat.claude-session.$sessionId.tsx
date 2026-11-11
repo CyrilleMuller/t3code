@@ -17,7 +17,7 @@ import { Spinner } from "../components/ui/spinner";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { isElectron } from "../env";
 import { workspaceAreaProps } from "../lib/workspaceFocus";
-import { usePrimaryEnvironmentId } from "../state/environments";
+import { useConnectedEnvironmentIds, usePrimaryEnvironmentId } from "../state/environments";
 import { useAtomCommand } from "../state/use-atom-command";
 
 const isClaudeSessionId = Schema.is(ClaudeSessionId);
@@ -34,6 +34,10 @@ const openClaudeSessionCommand = createEnvironmentRpcCommand(connectionAtomRunti
 function ClaudeSessionRouteView() {
   const { sessionId } = Route.useParams();
   const environmentId = usePrimaryEnvironmentId();
+  // A link opened in a new tab arrives before the socket is up; asking then fails with
+  // "<environment> is not connected", so wait for the connection.
+  const connectedIds = useConnectedEnvironmentIds();
+  const connected = environmentId !== null && connectedIds.includes(environmentId);
   const navigate = useNavigate();
   const openClaudeSession = useAtomCommand(openClaudeSessionCommand, { reportFailure: false });
   const startedRef = useRef<string | null>(null);
@@ -44,7 +48,7 @@ function ClaudeSessionRouteView() {
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- asks the server for the session's thread once the environment is known, then leaves this page
   useEffect(() => {
     const request = `${environmentId}:${sessionId}`;
-    if (!validId || environmentId === null || startedRef.current === request) return;
+    if (!validId || environmentId === null || !connected || startedRef.current === request) return;
     startedRef.current = request;
     void openClaudeSession({ environmentId, input: { sessionId } }).then((result) => {
       if (result._tag === "Success") {
@@ -59,7 +63,7 @@ function ClaudeSessionRouteView() {
       const cause = squashAtomCommandFailure(result);
       setFailure(cause instanceof Error ? cause.message : "The server could not open it.");
     });
-  }, [environmentId, navigate, openClaudeSession, sessionId, validId]);
+  }, [connected, environmentId, navigate, openClaudeSession, sessionId, validId]);
 
   return (
     <SidebarInset
